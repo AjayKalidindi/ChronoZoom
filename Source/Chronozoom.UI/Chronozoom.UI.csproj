@@ -311,6 +311,7 @@
     <Content Include="images\credits\uw.png" />
     <Content Include="images\default-tile.png" />
     <Content Include="images\edit-icon.png" />
+    <Content Include="images\forza.png" />
     <Content Include="images\home-icon.png" />
     <Content Include="images\icon_home.png" />
     <Content Include="images\icon_right_arrow.png" />
@@ -649,6 +650,7 @@
     <Content Include="ui\start-page.js">
       <DependentUpon>start-page.ts</DependentUpon>
     </Content>
+    <Content Include="ui\TagTripletWrapper.js" />
     <Content Include="ui\timeseries-data-form.html" />
     <TypeScriptCompile Include="ui\timeseries-data-form.ts" />
     <Content Include="ui\timeseries-data-form.js">

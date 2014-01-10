@@ -109,7 +109,7 @@ namespace Chronozoom.UI
                 Timeline timeline = ChronozoomSVC.Instance.GetTimelines(superCollection, collection, null, null, null, null, null, "1");
                 if (timeline != null)
                 {
-
+                    
                     pageInformation.Title = timeline.Title;
 
                     foreach (Exhibit exhibit in timeline.Exhibits)
@@ -145,7 +145,8 @@ namespace Chronozoom.UI
             }
             else
             {
-                HttpContext.Current.Response.Redirect("/");
+                if (superCollection.IndexOf("tag___", System.StringComparison.Ordinal) == -1)
+                    HttpContext.Current.Response.Redirect("/");
                 return false;
             }
         }

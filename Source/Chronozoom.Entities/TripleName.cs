@@ -15,7 +15,7 @@ namespace Chronozoom.Entities
 
         public TripleName(string ns, string prefix, string name)
         {
-            if(ns == null && prefix == null)
+            if (ns == null && prefix == null)
                 throw new ArgumentException("Both namespace and prefix cannot be null", "name");
 
             if (prefix == "_")
@@ -58,7 +58,7 @@ namespace Chronozoom.Entities
 
         private static readonly Regex _prefixReg = new Regex(@"^([a-z0-9_]+):([a-z0-9_\-]*)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex _namespaceReg = new Regex(@"^http://(?:www.)*chronozoom.com/([a-z0-9]+)#([a-z0-9\-]*)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
+        private static readonly Regex _hashRegex = new Regex(@"^([a-z0-9_]+):(#[a-z0-9_\-]*)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         /// <summary>Parses string as full triple name</summary>
         /// <param name="name">String with full triple name</param>
         /// <returns>TripleName object</returns>
@@ -70,6 +70,9 @@ namespace Chronozoom.Entities
             var mn = _namespaceReg.Match(name);
             if (mn.Success)
                 return new TripleName(mp.Groups[1].Value, null, mp.Groups[2].Value);
+            var hp = _hashRegex.Match(name);
+            if(hp.Success)
+                return new TripleName(null, hp.Groups[1].Value, hp.Groups[2].Value);
             else
                 throw new ArgumentException("Name does not have valid prefix or namespace");
         }
@@ -91,6 +94,7 @@ namespace Chronozoom.Entities
         public const string PredicatePrefix = "czpred";
         public const string ConstantPrefix = "czconstant";
         public const string TourPrefix = "cztour";
+        public const string HashTagPrefix = "czhashtag";
 
         public static readonly Dictionary<String, String> PrefixesAndNamespaces = new Dictionary<string, string>
         { 

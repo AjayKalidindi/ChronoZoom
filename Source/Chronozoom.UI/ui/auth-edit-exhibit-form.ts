@@ -8,6 +8,7 @@ module CZ {
         export interface IFormEditExhibitInfo extends IFormUpdateEntityInfo {
             titleTextblock: string;
             titleInput: string;
+			tagInput: string;
             datePicker: string;
             createArtifactButton: string;
             contentItemsListBox: string;
@@ -20,6 +21,7 @@ module CZ {
         export class FormEditExhibit extends FormUpdateEntity {
             public titleTextblock: JQuery;
             private titleInput: JQuery;
+			private tagInput: JQuery;
             private datePicker: DatePicker;
             private createArtifactButton: JQuery;
             public contentItemsListBox: ContentItemListBox;
@@ -43,6 +45,7 @@ module CZ {
 
                 this.titleTextblock = container.find(formInfo.titleTextblock);
                 this.titleInput = container.find(formInfo.titleInput);
+				this.tagInput = container.find(formInfo.tagInput);
                 this.datePicker = new CZ.UI.DatePicker(container.find(formInfo.datePicker));
                 this.createArtifactButton = container.find(formInfo.createArtifactButton);
                 this.contentItemsListBox = new CZ.UI.ContentItemListBox(container.find(formInfo.contentItemsListBox), formInfo.contentItemsTemplate, (<any>formInfo.context).contentItems);
@@ -68,6 +71,8 @@ module CZ {
             }
 
             private initUI() {
+				var subject = "czexhibit:" + this.exhibit.guid;
+                var predicate = "czpred:" + "virtualexhibit";
                 this.saveButton.prop('disabled', false);
 
                 this.titleInput.change(() => { this.isModified = true; });
@@ -78,6 +83,7 @@ module CZ {
                     this.saveButton.text("create exhibit");
 
                     this.titleInput.val(this.exhibit.title || "");
+					this.tagInput.hide();
                     this.datePicker.setDate(Number(this.exhibit.infodotDescription.date) || "", true);
                     this.closeButton.show();
                     this.createArtifactButton.show();
@@ -97,6 +103,10 @@ module CZ {
                 } else if (this.mode === "editExhibit") {
                     this.titleTextblock.text("Edit Exhibit");
                     this.saveButton.text("update exhibit");
+
+					var triples = CZ.Service.getTriplets(subject, predicate, null);
+                    var tagText = this.ParseTriples(triples);
+                    this.tagInput.val(tagText);
 
                     this.titleInput.val(this.exhibit.title || "");
                     this.datePicker.setDate(Number(this.exhibit.infodotDescription.date) || "", true);
@@ -191,6 +201,15 @@ module CZ {
                     this.errorMessage.text("Exhibit intersects other elemenets");
                 }
 
+				if(this.exhibit.guid){
+					var subject = "czexhibit:" + this.exhibit.guid;
+                    var predicate = "czpred:" + "virtualexhibit";
+					this.DeleteTriples(subject, predicate);
+                    if (this.tagInput.val()) {
+                        this.CreateTriples(subject, predicate, this.tagInput.val());
+                    }
+				}
+
                 if (CZ.Authoring.validateExhibitData(this.datePicker.getDate(), this.titleInput.val(), this.exhibit.contentItems) &&
                     CZ.Authoring.checkExhibitIntersections(this.exhibit.parent, newExhibit, true) &&
                     this.exhibit.contentItems.length >= 1 && this.exhibit.contentItems.length <= CZ.Settings.infodotMaxContentItemsCount) {
@@ -239,12 +258,15 @@ module CZ {
                         .fadeOut(() => self.errorMessage.text(origMsg));
                 } else {
                     this.errorMessage.text("One or more fields filled wrong").show().delay(7000).fadeOut();
-                }
+                }				
             }
 
             private onDelete() {
                 if (confirm("Are you sure want to delete the exhibit and all of its content items? Delete can't be undone!")) {
-                    CZ.Authoring.removeExhibit(this.exhibit);
+                    var subject = "czexhibit:" + this.exhibit.guid;
+                    var predicate = "czpred:" + "virtualexhibit";
+                    this.DeleteTriples(subject, predicate);
+					CZ.Authoring.removeExhibit(this.exhibit);
                     this.isCancel = false;
                     this.isModified = false;
                     this.close();
@@ -317,6 +339,48 @@ module CZ {
                 });
             }
 
+			public DeleteTriples(subject,predicate):void{
+				if (subject && predicate) {
+                    var object = "czhashtag:" + "sample";
+                    CZ.Service.deleteTriplet(subject, predicate, object);
+                }
+			}
+
+			public CreateTriples(subject,predicate,tagInput):void{
+				if (subject && predicate && tagInput) {
+                    var tags = tagInput.split(",");
+                    // Call to create new triples on timeline.
+                    for (var i = 0; i < tags.length; i++) {
+                        if (tags[i]) {
+                            var object = "czhashtag:" + tags[i];
+                            CZ.Service.putTriplet(subject, predicate, object);
+                        }
+                    }
+
+                }
+			}
+
+			public ParseTriples(triples):string{
+				var tagString="";
+				if(triples && triples.responseText){
+					var test = triples.responseText;
+					var responseObject = JSON.parse(test);
+					if (responseObject && responseObject.length > 0 && responseObject[0].Objects) {
+                        var objects = responseObject[0].Objects;
+                        var objectCount = objects.length;
+						if (objectCount < 1) return tagString;
+                        else if (objectCount == 1) {
+                            tagString += objects[0].Object.split("czhashtag:")[1];
+                            return tagString;
+                        }
+                        for (var i = 0; i < (objectCount - 1) ; i++) {
+                            tagString += objects[i].Object.split("czhashtag:")[1] + ",";
+                        }
+                        tagString += objects[objectCount - 1].Object.split("czhashtag:")[1];
+                    }
+				}
+				return tagString;
+			}		
             public hide(noAnimation: boolean = false) {
                 super.close(noAnimation ? undefined : {
                     effect: "slide",

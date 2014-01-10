@@ -65,7 +65,7 @@ namespace Chronozoom.UI
                 SetStatusCode(HttpStatusCode.BadRequest, exc.Message);
             }
         }
-
+       
         public void PutTriplet(SingleTriple triple)
         {
             try

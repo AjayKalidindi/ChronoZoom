@@ -142,9 +142,21 @@ module CZ {
         export function getTimelines(r,sc = superCollectionName,c = collectionName) {
             CZ.Authoring.resetSessionTimer();
             var request = new Request(_serviceUrl);
-            request.addToPath("gettimelines");
-            request.addParameter("supercollection", sc);
-            request.addParameter("collection", c);
+			if (sc != null && sc.indexOf("tag___") != -1) {
+                var tag = sc.split("tag___")[1];
+                if (tag) {
+                    request.addToPath("GetTimelinesByTag");
+                    request.addParameter("hashTag", tag);
+                } else {
+                    request.addToPath("gettimelines");
+                    request.addParameter("supercollection", sc);
+                    request.addParameter("collection", c);
+                }
+            }else{
+				request.addToPath("gettimelines");
+				request.addParameter("supercollection", sc);
+				request.addParameter("collection", c);
+			}            
             request.addParameters(r);
 
             console.log("[GET] " + request.url);
@@ -801,6 +813,7 @@ module CZ {
             var request = new Service.Request(_serviceUrl);
             request.addToPath("triples");
             return $.ajax({
+				async: false,
                 type: "PUT",
                 cache: false,
                 contentType: "application/json",
@@ -826,6 +839,7 @@ module CZ {
             if(object != null)
                 request.addParameter("object", encodeURIComponent(object));
             return $.ajax({
+				async: false,
                 type: "GET",
                 cache: false,
                 contentType: "application/json",
@@ -838,6 +852,7 @@ module CZ {
             var request = new Service.Request(_serviceUrl);
             request.addToPath("triples");
             return $.ajax({
+				async: false,
                 type: "DELETE",
                 cache: false,
                 contentType: "application/json",

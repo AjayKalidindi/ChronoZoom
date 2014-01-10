@@ -41,10 +41,13 @@ namespace Chronozoom.UI
         /// ]]></example>
         [SuppressMessage("Microsoft.Naming", "CA1716:IdentifiersShouldNotMatchKeywords", MessageId = "End")]
         [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "minspan")]
-        [OperationContract]
+        [OperationContract(Name = "GetTimelines")]
         [WebGet(ResponseFormat = WebMessageFormat.Json)]
         Timeline GetTimelines(string superCollection, string collection, string start, string end, string minspan, string commonAncestor, string maxElements, string depth);
 
+        [OperationContract(Name = "GetTimelinesByTag")]
+        [WebGet(ResponseFormat = WebMessageFormat.Json)]
+        Timeline GetTimelines(string hashTag);
         /// <summary>
         /// Performs a search for a specific term within a collection or a superCollection.
         /// </summary>
@@ -569,10 +572,10 @@ namespace Chronozoom.UI
         [WebInvoke(Method = "GET", UriTemplate = "/triples?subject={subject}&predicate={predicate}&object={object}", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json)]
         IEnumerable<Triple> GetTriplets(string subject, string predicate, string @object);
 
-        [OperationContract]
+        [OperationContract(Name = "DeleteConstructedTriplet")]
         [WebInvoke(Method = "DELETE", UriTemplate = "/triples", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json)]
         void DeleteTriplet(SingleTriple triple);
-
+        
         [OperationContract]
         [WebInvoke(Method = "PUT", UriTemplate = "/triples", RequestFormat = WebMessageFormat.Json, ResponseFormat = WebMessageFormat.Json)]
         void PutTriplet(SingleTriple triple);

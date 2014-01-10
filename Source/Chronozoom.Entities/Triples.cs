@@ -132,9 +132,11 @@ namespace Chronozoom.Entities
             var shortPredicateStr = predicateName.ToString();
             var shortObjectStr = objectName.ToString();
             
+            // Check if there exists a triple with the same subject and predicate.
             var tr = Triples.Where(t => t.Subject == shortSubjectStr && t.Predicate == shortPredicateStr).Include(o => o.Objects).FirstOrDefault();
             if (tr != null)
             {
+                // Check if there exists an object in the object store (related to the triple by triple_id) that shares the same object tag.
                 if (tr.Objects.FirstOrDefault(x => x.Object == shortObjectStr) == null)
                 {
                     tr.Objects.Add(
@@ -187,6 +189,27 @@ namespace Chronozoom.Entities
             var shortSubjectStr = subjectName.ToString();
             var shortPredicateStr = predicateName.ToString();
             var shortObjectStr = objectName.ToString();
+            
+            //Special case to handle deletion of triplets associated with virtual entities.
+            if (shortPredicateStr.ToLower().Contains("virtual"))
+            {
+                // retrieve all the existing triples.
+                var existingTriples =
+                    Triples.Where(t => t.Subject == shortSubjectStr && t.Predicate == shortPredicateStr)
+                        .Include(o => o.Objects)
+                        .FirstOrDefault();
+                if (existingTriples != null)
+                {
+                    int count = existingTriples.Objects.Count;
+                    for (int i = count -1; i >=0; i--)
+                    {
+                        
+                        TripleObjects.Remove(existingTriples.Objects[i]);
+                        SaveChanges();
+                    }
+                }
+                return true;
+            }
 
             var tr = Triples.Where(t => t.Subject == shortSubjectStr && t.Predicate == shortPredicateStr).Include(o => o.Objects).FirstOrDefault();
             if (tr != null)
@@ -205,7 +228,7 @@ namespace Chronozoom.Entities
             }
             return false;
         }
-
+        
         /// <summary>
         /// Add new prefix and associated namespace with it.
         /// </summary>

@@ -9,6 +9,7 @@ module CZ {
             endDate: string;
             deleteButton: string;
             titleInput: string;
+			tagInput: string;
             errorMessage: string;
             context: Object;
         }
@@ -20,6 +21,7 @@ module CZ {
             private endDate: CZ.UI.DatePicker;
             private titleInput: JQuery;
             private errorMessage: JQuery;
+			private tagInput: JQuery;
 
             private timeline: any;
             private isCancel: boolean;
@@ -34,6 +36,7 @@ module CZ {
                 this.endDate = new CZ.UI.DatePicker(container.find(formInfo.endDate));
                 this.titleInput = container.find(formInfo.titleInput);
                 this.errorMessage = container.find(formInfo.errorMessage);
+				this.tagInput = container.find(formInfo.tagInput);
 
                 this.timeline = formInfo.context;
 
@@ -47,21 +50,32 @@ module CZ {
                 this.initialize();
             }
 
-            private initialize(): void {
-                this.saveButton.prop('disabled', false);
+            private initialize(): void 
+			{
+				var subject = "cztimeline:" + this.timeline.guid;
+                var predicate = "czpred:" + "virtualtimeline";
+                
+				this.saveButton.prop('disabled', false);
                 if (CZ.Authoring.mode === "createTimeline") {
                     this.deleteButton.hide();
+					this.tagInput.hide();
                     this.titleTextblock.text("Create Timeline");
                     this.saveButton.text("create timeline");
                 }
                 else if (CZ.Authoring.mode === "editTimeline") {
                     this.deleteButton.show();
                     this.titleTextblock.text("Edit Timeline");
+
+					var triples = CZ.Service.getTriplets(subject, predicate, null);
+					var tagText = this.ParseTriples(triples);
+					this.tagInput.val(tagText);
+
                     this.saveButton.text("update timeline");
                 }
                 else if (CZ.Authoring.mode === "createRootTimeline") {
                     this.deleteButton.hide();
                     this.closeButton.hide();
+					this.tagInput.hide();
                     this.titleTextblock.text("Create Root Timeline");
                     this.saveButton.text("create timeline");
                 }
@@ -72,8 +86,8 @@ module CZ {
 
                 this.isCancel = true;
                 this.endDate.addEditMode_Infinite();
-
-                this.titleInput.val(this.timeline.title);
+				
+				this.titleInput.val(this.timeline.title);
                 this.startDate.setDate(this.timeline.x, true);
 
                 if (this.timeline.endDate === 9999) {
@@ -101,11 +115,10 @@ module CZ {
                     else {
                         this.errorMessage.empty();
                         var self = this;
-
                         this.saveButton.prop('disabled', true);
                         CZ.Authoring.updateTimeline(this.timeline, {
                             title: this.titleInput.val(),
-                            start: this.startDate.getDate(),
+							start: this.startDate.getDate(),
                             end: this.endDate.getDate(),
                         }).then(
                             function (success) {
@@ -126,18 +139,27 @@ module CZ {
                             }
                         ).always(() => {
                             this.saveButton.prop('disabled', false);
-                        });
+                        });	
+						if(this.timeline.guid){
+							this.DeleteTriples(subject,predicate);
+							if(this.tagInput.val()){
+								 this.CreateTriples(subject, predicate, this.tagInput.val());
+							}
+						}
+			
                     }
                 });
 
                 this.deleteButton.click(event => {
                     if (confirm("Are you sure want to delete timeline and all of its nested timelines and exhibits? Delete can't be undone!")) {
                         var isDataValid = true;
+						//remove any triples associated with the virtual timeline.
+						this.DeleteTriples(subject,predicate);
                         CZ.Authoring.removeTimeline(this.timeline);
                         this.close();
                     }
                 });
-            }
+            }			
 
             public show(): void {
                 super.show({
@@ -148,6 +170,48 @@ module CZ {
 
                 this.activationSource.addClass("active");
             }
+			public DeleteTriples(subject,predicate):void{
+				if (subject && predicate) {
+                    var object = "czhashtag:" + "sample";
+                    CZ.Service.deleteTriplet(subject, predicate, object);
+                }
+			}
+
+			public CreateTriples(subject,predicate,tagInput):void{
+				if (subject && predicate && tagInput) {
+                    var tags = tagInput.split(",");
+                    // Call to create new triples on timeline.
+                    for (var i = 0; i < tags.length; i++) {
+                        if (tags[i]) {
+                            var object = "czhashtag:" + tags[i];
+                            CZ.Service.putTriplet(subject, predicate, object);
+                        }
+                    }
+
+                }
+			}
+
+			public ParseTriples(triples):string{
+				var tagString="";
+				if(triples && triples.responseText){
+					var test = triples.responseText;
+					var responseObject = JSON.parse(test);
+					if (responseObject  && responseObject.length > 0 && responseObject[0].Objects) {
+                        var objects = responseObject[0].Objects;
+                        var objectCount = objects.length;
+						if (objectCount < 1) return tagString;
+                        else if (objectCount == 1) {
+                            tagString += objects[0].Object.split("czhashtag:")[1];
+                            return tagString;
+                        }
+                        for (var i = 0; i < (objectCount - 1) ; i++) {
+                            tagString += objects[i].Object.split("czhashtag:")[1] + ",";
+                        }
+                        tagString += objects[objectCount - 1].Object.split("czhashtag:")[1];
+                    }
+				}
+				return tagString;
+			}		
 
             public close() {
                 this.errorMessage.empty();

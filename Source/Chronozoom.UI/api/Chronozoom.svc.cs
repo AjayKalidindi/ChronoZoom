@@ -23,7 +23,8 @@ using System.Text;
 using System.Web;
 using Chronozoom.Entities;
 using System.Data.Entity;
-
+using Chronozoom.Entities.VirtualCollections;
+using Chronozoom.Entities.VirtualCollections.Exceptions;
 using Chronozoom.UI.Utils;
 using System.ServiceModel.Description;
 using System.Text.RegularExpressions;
@@ -276,6 +277,36 @@ namespace Chronozoom.UI
             get { return _sharedService.Value; }
         }
 
+        public Timeline GetTimelines(string hashTag)
+        {
+            if (string.IsNullOrWhiteSpace(hashTag))
+            {
+                throw new AggregationException("Hash tag cannot be null or empty. Please enter a valid text input");
+            }
+            Trace.TraceInformation("Get timelines by hashtag");
+            var virtualTimelineIds = new List<Guid>();
+            var virtualExhibitIds = new List<Guid>();
+            ICollection<Timeline> aggregatedTimelines = new HashSet<Timeline>();
+            ICollection<Exhibit> aggregatedExhibits = new HashSet<Exhibit>();
+
+            if (hashTag[0] == '#')
+            {
+                int hashTagLength = hashTag.Length;
+                hashTag = hashTag.Substring(1, hashTagLength - 1);
+            }
+            // fetch all the virtual entity ids that share the same tag.
+            HashTagAggregation.FetchVirtualEntityIdsByTag(hashTag, ref virtualTimelineIds, ref virtualExhibitIds);
+
+            // aggregate all the virtual entities by their ids.
+            var aggregation = new EntityAggregation(virtualTimelineIds, virtualExhibitIds);
+            aggregation.AggregateTimelinesAndExhibits(ref aggregatedTimelines, ref aggregatedExhibits);
+
+            // Aggregate all timelines and entities under the root timeline.
+            var root = new RootVirtualTimeline(aggregatedTimelines, aggregatedExhibits, hashTag);
+            Timeline rootVirtualTimeline = root.ConstructRootVirtualTimeline();
+            return rootVirtualTimeline;
+        }
+
         /// <summary>
         /// Documentation under IChronozoomSVC
         /// </summary>
@@ -336,6 +367,8 @@ namespace Chronozoom.UI
                 return timeline;
             });
         }
+
+        
 
         //private static bool ShouldRetrieveAllTimelines(Storage storage, string commonAncestor, Guid collectionId, int maxElements)
         //{
@@ -1219,7 +1252,7 @@ namespace Chronozoom.UI
             Uri uriResult;
 
             // If Media Source is present, validate it
-            if (contentitem.MediaSource.Length > 0 && !(Uri.TryCreate(contentitem.MediaSource, UriKind.Absolute, out uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps)))
+            if (string.IsNullOrEmpty(contentitem.MediaSource) && !(Uri.TryCreate(contentitem.MediaSource, UriKind.Absolute, out uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps)))
             {
                 SetStatusCode(HttpStatusCode.BadRequest, ErrorDescription.InvalidMediaSourceUrl);
                 error = ErrorDescription.InvalidMediaSourceUrl;

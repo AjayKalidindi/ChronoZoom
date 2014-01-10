@@ -15,6 +15,7 @@ var CZ;
 
                 this.titleTextblock = container.find(formInfo.titleTextblock);
                 this.titleInput = container.find(formInfo.titleInput);
+                this.tagInput = container.find(formInfo.tagInput);
                 this.datePicker = new CZ.UI.DatePicker(container.find(formInfo.datePicker));
                 this.createArtifactButton = container.find(formInfo.createArtifactButton);
                 this.contentItemsListBox = new CZ.UI.ContentItemListBox(container.find(formInfo.contentItemsListBox), formInfo.contentItemsTemplate, (formInfo.context).contentItems);
@@ -40,6 +41,9 @@ var CZ;
             }
             FormEditExhibit.prototype.initUI = function () {
                 var _this = this;
+                
+                var subject = "czexhibit:" + this.exhibit.guid;
+                var predicate = "czpred:" + "virtualexhibit";
                 this.saveButton.prop('disabled', false);
 
                 this.titleInput.change(function () {
@@ -54,6 +58,7 @@ var CZ;
                     this.saveButton.text("create exhibit");
 
                     this.titleInput.val(this.exhibit.title || "");
+                    this.tagInput.hide();
                     this.datePicker.setDate(Number(this.exhibit.infodotDescription.date) || "", true);
                     this.closeButton.show();
                     this.createArtifactButton.show();
@@ -81,6 +86,10 @@ var CZ;
                 } else if (this.mode === "editExhibit") {
                     this.titleTextblock.text("Edit Exhibit");
                     this.saveButton.text("update exhibit");
+                    
+                    var triples = CZ.Service.getTriplets(subject, predicate, null);
+                    var tagText = this.ParseTriples(triples);
+                    this.tagInput.val(tagText);
 
                     this.titleInput.val(this.exhibit.title || "");
                     this.datePicker.setDate(Number(this.exhibit.infodotDescription.date) || "", true);
@@ -182,6 +191,15 @@ var CZ;
                 if (CZ.Authoring.checkExhibitIntersections(this.exhibit.parent, newExhibit, true)) {
                     this.errorMessage.text("Exhibit intersects other elemenets");
                 }
+                
+                if (_this.exhibit.guid) {
+                    var subject = "czexhibit:" + _this.exhibit.guid;
+                    var predicate = "czpred:" + "virtualexhibit";
+                    _this.DeleteTriples(subject, predicate);
+                  if (_this.tagInput.val()) {
+                      _this.CreateTriples(subject, predicate, _this.tagInput.val());
+                    }
+                }
 
                 if (CZ.Authoring.validateExhibitData(this.datePicker.getDate(), this.titleInput.val(), this.exhibit.contentItems) && CZ.Authoring.checkExhibitIntersections(this.exhibit.parent, newExhibit, true) && this.exhibit.contentItems.length >= 1 && this.exhibit.contentItems.length <= CZ.Settings.infodotMaxContentItemsCount) {
                     this.saveButton.prop('disabled', true);
@@ -227,6 +245,9 @@ var CZ;
 
             FormEditExhibit.prototype.onDelete = function () {
                 if (confirm("Are you sure want to delete the exhibit and all of its content items? Delete can't be undone!")) {
+                    var subject = "czexhibit:" + this.exhibit.guid;
+                    var predicate = "czpred:" + "virtualexhibit";
+                    CZ.DeleteTriples(subject, predicate);
                     CZ.Authoring.removeExhibit(this.exhibit);
                     this.isCancel = false;
                     this.isModified = false;
@@ -234,6 +255,51 @@ var CZ;
                 }
             };
 
+            
+
+            FormEditExhibit.prototype.DeleteTriples = function (subject, predicate) {
+                if (subject && predicate) {
+                    var object = "czhashtag:" + "sample";
+                    CZ.Service.deleteTriplet(subject, predicate, object);
+                }
+
+            };
+            
+            FormEditExhibit.prototype.CreateTriples = function (subject, predicate, tagInput) {
+                if (subject && predicate && tagInput) {
+                    var tags = tagInput.split(",");
+                    // Call to create new triples on timeline.
+                    for (var i = 0; i < tags.length; i++) {
+                        if (tags[i]) {
+                            var object = "czhashtag:" + tags[i];
+                            CZ.Service.putTriplet(subject, predicate, object);
+                        }
+                    }
+
+                }
+            };
+            
+            FormEditExhibit.prototype.ParseTriples = function (triples) {
+                var tagString = "";
+                if (triples && triples.responseText) {
+                    var test = triples.responseText;
+                    var responseObject = JSON.parse(test);
+                    if (responseObject != null && responseObject.length > 0 && responseObject[0].Objects) {
+                        var objects = responseObject[0].Objects;
+                        var objectCount = objects.length;
+                        if (objectCount < 1) return tagString;
+                        else if (objectCount == 1) {
+                            tagString += objects[0].Object.split("czhashtag:")[1];
+                            return tagString;
+                        }
+                        for (var i = 0; i < (objectCount - 1) ; i++) {
+                            tagString += objects[i].Object.split("czhashtag:")[1] + ",";
+                        }
+                        tagString += objects[objectCount - 1].Object.split("czhashtag:")[1];
+                    }
+                }
+                return tagString;
+            };
             FormEditExhibit.prototype.onContentItemDblClick = function (item, _) {
                 var idx;
                 if (typeof item.data.order !== 'undefined' && item.data.order !== null && item.data.order >= 0 && item.data.order < CZ.Settings.infodotMaxContentItemsCount) {

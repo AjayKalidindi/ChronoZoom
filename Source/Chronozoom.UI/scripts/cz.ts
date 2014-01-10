@@ -401,7 +401,7 @@ module CZ {
                             endDate: ".cz-form-time-end",
                             saveButton: ".cz-form-save",
                             deleteButton: ".cz-form-delete",
-                            titleInput: ".cz-form-item-title",
+                            titleInput: ".cz-form-item-title",							
                             errorMessage: "#error-edit-timeline",
                             context: timeline
                         });
@@ -418,7 +418,8 @@ module CZ {
                             saveButton: ".cz-form-save",
                             deleteButton: ".cz-form-delete",
                             titleInput: ".cz-form-item-title",
-                            errorMessage: "#error-edit-timeline",
+							tagInput: ".cz-form-item-tags",
+							errorMessage: "#error-edit-timeline",
                             context: timeline
                         });
                         form.show();
@@ -449,6 +450,7 @@ module CZ {
                             closeButton: ".cz-form-close-btn > .cz-form-btn",
                             titleTextblock: ".cz-form-title",
                             titleInput: ".cz-form-item-title",
+							tagInput: ".cz-form-item-tags",
                             datePicker: ".cz-form-time",
                             createArtifactButton: ".cz-form-create-artifact",
                             contentItemsListBox: ".cz-listbox",

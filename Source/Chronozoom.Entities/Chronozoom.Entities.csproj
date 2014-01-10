@@ -132,6 +132,12 @@
     <Compile Include="TriplePrefix.cs" />
     <Compile Include="Triples.cs" />
     <Compile Include="User.cs" />
+    <Compile Include="VirtualCollections\EntityAggregation.cs" />
+    <Compile Include="VirtualCollections\RootVirtualTimeline.cs" />
+    <Compile Include="VirtualCollections\VirtualCollectionConstants\Constants.cs" />
+    <Compile Include="VirtualCollections\Exceptions\AggregationException.cs" />
+    <Compile Include="VirtualCollections\HashTagAggregation.cs" />
+    <Compile Include="VirtualEntity.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Settings.StyleCop">

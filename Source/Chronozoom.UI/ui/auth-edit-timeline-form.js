@@ -19,6 +19,7 @@ var CZ;
                 this.endDate = new CZ.UI.DatePicker(container.find(formInfo.endDate));
                 this.titleInput = container.find(formInfo.titleInput);
                 this.errorMessage = container.find(formInfo.errorMessage);
+                this.tagInput = container.find(formInfo.tagInput);
 
                 this.timeline = formInfo.context;
 
@@ -31,18 +32,30 @@ var CZ;
 
                 this.initialize();
             }
-            FormEditTimeline.prototype.initialize = function () {
+            FormEditTimeline.prototype.initialize = function ()
+            {
                 var _this = this;
+                var subject = "cztimeline:" + this.timeline.guid;
+                var predicate = "czpred:" + "virtualtimeline";
+                
                 this.saveButton.prop('disabled', false);
                 if (CZ.Authoring.mode === "createTimeline") {
                     this.deleteButton.hide();
+                    this.tagInput.hide();
                     this.titleTextblock.text("Create Timeline");
+                    
                     this.saveButton.text("create timeline");
                 } else if (CZ.Authoring.mode === "editTimeline") {
                     this.deleteButton.show();
                     this.titleTextblock.text("Edit Timeline");
+                    
+                    var triples = CZ.Service.getTriplets(subject, predicate, null);
+                    var tagText = this.ParseTriples(triples);
+                    this.tagInput.val(tagText);
+                    
                     this.saveButton.text("update timeline");
                 } else if (CZ.Authoring.mode === "createRootTimeline") {
+                    this.tagInput.hide();
                     this.deleteButton.hide();
                     this.closeButton.hide();
                     this.titleTextblock.text("Create Root Timeline");
@@ -54,8 +67,9 @@ var CZ;
 
                 this.isCancel = true;
                 this.endDate.addEditMode_Infinite();
-
+                
                 this.titleInput.val(this.timeline.title);
+                
                 this.startDate.setDate(this.timeline.x, true);
 
                 if (this.timeline.endDate === 9999) {
@@ -81,7 +95,6 @@ var CZ;
                     } else {
                         _this.errorMessage.empty();
                         var self = _this;
-
                         _this.saveButton.prop('disabled', true);
                         CZ.Authoring.updateTimeline(_this.timeline, {
                             title: _this.titleInput.val(),
@@ -102,18 +115,69 @@ var CZ;
                         }).always(function () {
                             _this.saveButton.prop('disabled', false);
                         });
+
+                        if (_this.timeline.guid) {
+                            _this.DeleteTriples(subject, predicate);
+                            if (_this.tagInput.val()) {
+                                _this.CreateTriples(subject, predicate, _this.tagInput.val());
+                            }
+                        }
                     }
                 });
 
                 this.deleteButton.click(function (event) {
                     if (confirm("Are you sure want to delete timeline and all of its nested timelines and exhibits? Delete can't be undone!")) {
                         var isDataValid = true;
+                        // remove all triples associated with the virtual timeline.
+                       _this.DeleteTriples(subject,predicate);
                         CZ.Authoring.removeTimeline(_this.timeline);
                         _this.close();
                     }
                 });
             };
+            FormEditTimeline.prototype.ParseTriples = function(triples) {
+                var tagString="";
+                if (triples && triples.responseText) {
+                    var test = triples.responseText;
+                    var responseObject = JSON.parse(test);
+                    if (responseObject && responseObject.length > 0 && responseObject[0].Objects) {
+                        var objects = responseObject[0].Objects;
+                        var objectCount = objects.length;
+                        if (objectCount < 1) return tagString;
+                        else if (objectCount == 1) {
+                            tagString += objects[0].Object.split("czhashtag:")[1];
+                            return tagString;
+                        }
+                        for (var i = 0; i < (objectCount - 1) ; i++) {
+                            tagString += objects[i].Object.split("czhashtag:")[1] + ",";
+                        }
+                        tagString += objects[objectCount - 1].Object.split("czhashtag:")[1];
+                    }
+                }
+                return tagString;
+            };
+            FormEditTimeline.prototype.DeleteTriples = function (subject,predicate) {
+                if (subject && predicate) {
+                    var object = "czhashtag:" + "sample";
+                    CZ.Service.deleteTriplet(subject, predicate, object);
+                }
 
+            };
+            
+            FormEditTimeline.prototype.CreateTriples = function (subject,predicate,tagInput) {
+                if (subject && predicate && tagInput) {
+                    var tags = tagInput.split(",");
+                    // Call to create new triples on timeline.
+                    for (var i = 0; i < tags.length; i++) {
+                        if (tags[i]) {
+                            var object = "czhashtag:" + tags[i];
+                            CZ.Service.putTriplet(subject, predicate, object);
+                        }
+                    }
+
+                }
+            };
+            
             FormEditTimeline.prototype.show = function () {
                 _super.prototype.show.call(this, {
                     effect: "slide",
